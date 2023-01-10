@@ -63,6 +63,31 @@ app.get("/batch", async (req, res) => {
   }
   res.json({ 'count': assignedJobs.length, 'jobs': assignedJobs });
 });
+
+app.post("/jobs/:jobId/completed", async (req, res) => {
+    const jobId = req.params.jobId;
+    
+    if(jobs['queued'][jobId]) {
+      res.status(400).send({ 'message': 'This Job has not been handed out yet!' });
+      return;
+    }
+
+    if (jobs['waiting'][jobId]) {
+      jobs['finished'][jobId] = jobs['waiting'][jobId];
+      delete jobs['waiting'][jobId];
+      console.log(`Completed Job ${jobId}`);
+      res.json({message: `Job successfully completed`});
+      return;
+    }
+
+    if(jobs['finished'][jobId]) {
+      res.status(400).send({ 'message': 'Job already completed!' });
+      return;
+    }
+
+    res.status(400).send({ 'message': `Job ${jobId} not found` });
+});
+
 app.listen(PORT, () => {
     console.log("Job Server running")
 })
