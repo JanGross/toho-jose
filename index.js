@@ -34,6 +34,21 @@ app.get('/jobs', (req, res) => {
   );
 });
 
+
+app.post("/jobs", (req, res) => {
+  const data = req.body;
+  let jobId = crypto.createHash('md5').update(JSON.stringify(req.body)).digest('hex');
+
+  if (jobs['queued'][jobId] || jobs['waiting'][jobId]) {
+    res.status(409).json({ 'message': 'Request already queued or processing!', 'jobId': jobId });
+    return;
+  }
+
+  jobs['queued'][jobId] = req.body;
+  jobs['queued'][jobId]['jobId'] = jobId;
+  console.log(`Queued Job ${jobId}`);
+  res.json({ 'jobId': jobId });
+});
 app.listen(PORT, () => {
     console.log("Job Server running")
 })
