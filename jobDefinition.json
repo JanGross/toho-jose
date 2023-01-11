@@ -2,14 +2,10 @@
     "remoteIdentifier": "AAAAA",
     "callback": "undefined",
     "type": "card",
-    "assets": {
-        "background": "https://eu2.contabostorage.com/823a1fae2a934aff89c43777a6329b4d:bot-storage/characters/miku.png",
-        "frame": "https://eu2.contabostorage.com/823a1fae2a934aff89c43777a6329b4d:bot-storage/frames/rainbow_overlay.png"
-    },
     "composition": [
         { 
             "type": "image",
-            "asset": "background",
+            "asset": "https://eu2.contabostorage.com/823a1fae2a934aff89c43777a6329b4d:bot-storage/characters/miku.png",
             "x": 0,
             "y": 0,
             "width": 300,
@@ -17,7 +13,7 @@
         },
         { 
             "type": "image",
-            "asset": "frame",
+            "asset": "https://eu2.contabostorage.com/823a1fae2a934aff89c43777a6329b4d:bot-storage/frames/rainbow_overlay.png",
             "x": 0,
             "y": 300,
             "width": 300,
