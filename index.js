@@ -1,6 +1,7 @@
 const express = require("express");
 var crypto = require('crypto');
 const { finished } = require("stream");
+const axios = require("axios");
 
 const app = express();
 
@@ -34,7 +35,6 @@ app.get('/jobs', (req, res) => {
   );
 });
 
-
 app.post("/jobs", (req, res) => {
   const data = req.body;
   let jobId = crypto.createHash('md5').update(JSON.stringify(req.body)).digest('hex');
@@ -66,7 +66,8 @@ app.get("/batch", async (req, res) => {
 
 app.post("/jobs/:jobId/completed", async (req, res) => {
     const jobId = req.params.jobId;
-    
+    const jobResult = req.body;
+
     if(jobs['queued'][jobId]) {
       res.status(400).send({ 'message': 'This Job has not been handed out yet!' });
       return;
@@ -74,9 +75,24 @@ app.post("/jobs/:jobId/completed", async (req, res) => {
 
     if (jobs['waiting'][jobId]) {
       jobs['finished'][jobId] = jobs['waiting'][jobId];
+      jobs['finished'][jobId]['result'] = jobResult;
       delete jobs['waiting'][jobId];
       console.log(`Completed Job ${jobId}`);
       res.json({message: `Job successfully completed`});
+
+      let callbackUrl = jobs['finished'][jobId]['callback'];
+      if(callbackUrl) {
+        axios.post(callbackUrl, JSON.stringify(jobResult), {
+          headers: {
+          'Content-Type': 'application/json'
+        }})
+        .then(response => {
+          console.log(`Callback Succesful for Job ${jobId}`);
+        })
+        .catch(error => {
+          console.log(`Callback Error on Job ${jobId}: ${error}`);
+        });
+      }
       return;
     }
 
