@@ -5,7 +5,7 @@
     "composition": [
         { 
             "type": "image",
-            "asset": "https://eu2.contabostorage.com/823a1fae2a934aff89c43777a6329b4d:bot-storage/characters/miku.png",
+            "asset": "https://cdn.discordapp.com/attachments/1083687175998152714/1113486177002070126/template.png",
             "x": 0,
             "y": 0,
             "width": 300,
@@ -13,7 +13,7 @@
         },
         { 
             "type": "image",
-            "asset": "https://eu2.contabostorage.com/823a1fae2a934aff89c43777a6329b4d:bot-storage/frames/rainbow_overlay.png",
+            "asset": "https://cdn.discordapp.com/attachments/1083687175998152714/1113486254953222205/rainbow_overlay.png",
             "x": 0,
             "y": 300,
             "width": 300,
