@@ -51,12 +51,7 @@ function ResolveJob(result){
 
 app.post("/jobs", async (req, res) => {
   const data = req.body;
-  let jobId = crypto.createHash('md5').update(JSON.stringify(req.body)).digest('hex');
-
-  if (jobs['queued'][jobId] || jobs['waiting'][jobId]) {
-    res.status(409).json({ 'message': 'Request already queued or processing!', 'jobId': jobId });
-    return;
-  }
+  let jobId = uuid.v4();
 
   jobs['queued'][jobId] = req.body;
   jobs['queued'][jobId]['jobId'] = jobId;
