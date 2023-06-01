@@ -133,7 +133,6 @@ app.post("/jobs/:jobId/completed", async (req, res) => {
     res.status(400).send({ 'message': `Job ${jobId} not found` });
 });
 
-
 wss.on('connection', function connection(ws) {
   var nodeID = uuid.v4();
   ws.nodeID = nodeID;
@@ -155,8 +154,12 @@ wss.on('connection', function connection(ws) {
       jobs['queued'][jobResult["jobId"]]['promise'].resolve(jobResult);
     }
   });
-
+  ws.on('close', function(reasonCode, description) {
+    console.log(`Node ${ws.nodeID} disconnected.`);
+    delete nodes[ws.nodeID]
+  });
 });
+
 
 app.listen(PORT_WEB, () => {
     console.log(`Job Server API running on ${PORT_WEB}`);
