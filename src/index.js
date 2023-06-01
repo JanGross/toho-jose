@@ -1,11 +1,18 @@
 const express = require("express");
 var crypto = require('crypto');
 const { finished } = require("stream");
+const uuid = require("uuid");
 const axios = require("axios");
+const path  = require("path")
+const { WebSocketServer } = require("ws");
+const { request } = require("http");
+
+const PORT_WEB = 6968;
+const PORT_WSS = 6980;
 
 const app = express();
-
-const PORT = 6968;
+const wss = new WebSocketServer({ port: PORT_WSS });
+console.log(`Websocket listening on port ${PORT_WSS}`);
 
 let jobs = {
     queued: {},
@@ -13,11 +20,15 @@ let jobs = {
     finished: {}
 }
 
+let nodes = {}; 
+
 app.use(express.json());
 
 app.get('/', (req, res) => {
   res.send('Job handling server')
 })
+
+app.use('/example', express.static(path.join(__dirname, 'example')));
 
 app.get('/jobs', (req, res) => {
   let queued = Object.values(jobs['queued']);
@@ -35,7 +46,14 @@ app.get('/jobs', (req, res) => {
   );
 });
 
-app.post("/jobs", (req, res) => {
+function ResolveJob(result){
+  let jobId = result["jobId"];
+  console.log(`Completed Job ${jobId}`);
+  delete jobs['queued'][jobId];
+  return result;
+}
+
+app.post("/jobs", async (req, res) => {
   const data = req.body;
   let jobId = crypto.createHash('md5').update(JSON.stringify(req.body)).digest('hex');
 
@@ -47,7 +65,18 @@ app.post("/jobs", (req, res) => {
   jobs['queued'][jobId] = req.body;
   jobs['queued'][jobId]['jobId'] = jobId;
   console.log(`Queued Job ${jobId}`);
-  res.json({ 'jobId': jobId });
+  var client = Array.from(wss.clients)[0];
+  if(!client) {
+    res.status(503).json({ 'message': 'No render nodes available', 'jobId': jobId });
+    return;
+  }
+  client.send(JSON.stringify({"job": req.body}));
+  let response = new Promise(function (resolve, reject){
+    jobs['queued'][jobId]['promise'] = {resolve: resolve, reject: reject}; 
+  });
+  console.log("Sent job to node", client.nodeID);
+  let result = await response.then(ResolveJob)
+  res.json({ 'jobId': jobId, "path": result["path"] });
 });
 
 app.get("/batch", async (req, res) => {
@@ -104,6 +133,31 @@ app.post("/jobs/:jobId/completed", async (req, res) => {
     res.status(400).send({ 'message': `Job ${jobId} not found` });
 });
 
-app.listen(PORT, () => {
-    console.log("Job Server running")
+
+wss.on('connection', function connection(ws) {
+  var nodeID = uuid.v4();
+  ws.nodeID = nodeID;
+  nodes[nodeID] = ws
+  console.log("New connection from", nodeID)
+  ws.on('error', console.error);
+
+  ws.on('message', function message(data) {
+    let request = JSON.parse(data);
+    console.log('received: %s', data);
+
+    if(request["register"]){
+      ws.send(JSON.stringify({"welcome": { "clientId": nodeID }}));
+      console.log("Node registered", nodeID);
+    }
+
+    if(request["result"]) {
+      let jobResult = request["result"]
+      jobs['queued'][jobResult["jobId"]]['promise'].resolve(jobResult);
+    }
+  });
+
+});
+
+app.listen(PORT_WEB, () => {
+    console.log(`Job Server API running on ${PORT_WEB}`);
 })
