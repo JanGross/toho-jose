@@ -1,3 +1,4 @@
+require('dotenv').config()
 const express = require("express");
 var crypto = require('crypto');
 const { finished } = require("stream");
@@ -82,6 +83,11 @@ wss.on('connection', function connection(ws) {
     console.log('received: %s', data);
 
     if(request["register"]){
+      if(request["register"]["auth_key"] !== process.env.NODE_AUTH_KEY) {
+        console.log("INVALID AUTH KEY. Disconnecting ", nodeID);
+        ws.close(4000, "Invalid auth key");
+        return;
+      }
       ws.send(JSON.stringify({"welcome": { "clientId": nodeID }}));
       console.log("Node registered", nodeID);
     }
