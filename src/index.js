@@ -21,6 +21,7 @@ let jobs = {
     finished: {}
 }
 
+let nodeIndex = 0;
 let nodes = {}; 
 
 app.use(express.json());
@@ -57,7 +58,9 @@ app.post("/jobs", async (req, res) => {
   jobs['queued'][jobId] = req.body;
   jobs['queued'][jobId]['jobId'] = jobId;
   console.log(`Queued Job ${jobId}`);
-  var client = Array.from(wss.clients)[0];
+  let nodes = Array.from(wss.clients);
+  nodeIndex = (nodeIndex + 1) % nodes.length;
+  var client = nodes[nodeIndex];
   if(!client) {
     res.status(503).json({ 'message': 'No render nodes available', 'jobId': jobId });
     return;
@@ -66,7 +69,7 @@ app.post("/jobs", async (req, res) => {
   let response = new Promise(function (resolve, reject){
     jobs['queued'][jobId]['promise'] = {resolve: resolve, reject: reject}; 
   });
-  console.log("Sent job to node", client.nodeID);
+  console.log(`Sent job to node ${nodeIndex+1}/${nodes.length} `, client.nodeID);
   let result = await response.then(ResolveJob)
   res.json({ 'jobId': jobId, "path": result["path"] });
 });
@@ -80,8 +83,7 @@ wss.on('connection', function connection(ws) {
 
   ws.on('message', function message(data) {
     let request = JSON.parse(data);
-    console.log('received: %s', data);
-
+    
     if(request["register"]){
       if(request["register"]["auth_key"] !== process.env.NODE_AUTH_KEY) {
         console.log("INVALID AUTH KEY. Disconnecting ", nodeID);
@@ -91,7 +93,7 @@ wss.on('connection', function connection(ws) {
       ws.send(JSON.stringify({"welcome": { "clientId": nodeID }}));
       console.log("Node registered", nodeID);
     }
-
+    
     if(request["result"]) {
       let jobResult = request["result"]
       jobs['queued'][jobResult["jobId"]]['promise'].resolve(jobResult);
