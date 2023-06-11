@@ -1,4 +1,5 @@
-![jose-banner](https://github.com/JanGross/toho-jose/assets/13641301/dd27779f-cab7-4274-b7ea-d125327ff991)
+![jose-banner](https://github.com/JanGross/toho-jose/assets/13641301/39ec06b4-342e-4353-a6d4-6fc622321566)
+
 ## Render-Job server for Toho-Miku
 ## Endpoints:
 - [GET] / 
