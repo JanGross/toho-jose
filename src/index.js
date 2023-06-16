@@ -5,6 +5,7 @@ const { finished } = require("stream");
 const uuid = require("uuid");
 const axios = require("axios");
 const path  = require("path")
+const fs = require("fs");
 const { WebSocketServer } = require("ws");
 const { request } = require("http");
 
@@ -24,7 +25,7 @@ let jobs = {
 let nodeIndex = 0;
 let nodes = {}; 
 
-app.use(express.json());
+app.use(express.json({ limit: 10000000 }));
 
 app.get('/', (req, res) => {
   res.send('Job handling server')
@@ -62,6 +63,27 @@ app.post("/jobs", async (req, res) => {
   nodeIndex = (nodeIndex + 1) % nodes.length;
   var client = nodes[nodeIndex];
   if(!client) {
+    res.status(503).json({ 'message': 'No render nodes available', 'jobId': jobId, 'details': JSON.stringify(nodes) });
+    return;
+  }
+  client.send(JSON.stringify({"job": req.body}));
+  let response = new Promise(function (resolve, reject){
+    jobs['queued'][jobId]['promise'] = {resolve: resolve, reject: reject}; 
+  });
+  console.log(`Sent job to node ${nodeIndex+1}/${nodes.length} `, client.nodeID);
+  let result = await response.then(ResolveJob)
+  res.json({ 'jobId': jobId, "path": result["value"] });
+});
+
+app.post("/result", async (req, res) => {
+  const data = req.body;
+  jobs['queued'][jobId] = req.body;
+  jobs['queued'][jobId]['jobId'] = jobId;
+  console.log(`Queued Job ${jobId}`);
+  let nodes = Array.from(wss.clients);
+  nodeIndex = (nodeIndex + 1) % nodes.length;
+  var client = nodes[nodeIndex];
+  if(!client) {
     res.status(503).json({ 'message': 'No render nodes available', 'jobId': jobId });
     return;
   }
@@ -71,7 +93,7 @@ app.post("/jobs", async (req, res) => {
   });
   console.log(`Sent job to node ${nodeIndex+1}/${nodes.length} `, client.nodeID);
   let result = await response.then(ResolveJob)
-  res.json({ 'jobId': jobId, "path": result["path"] });
+  res.json({ 'jobId': jobId, "path": result["value"] });
 });
 
 wss.on('connection', function connection(ws) {
@@ -96,7 +118,23 @@ wss.on('connection', function connection(ws) {
     
     if(request["result"]) {
       let jobResult = request["result"]
-      jobs['queued'][jobResult["jobId"]]['promise'].resolve(jobResult);
+      if(jobResult["type"] === "URL") {
+        jobs['queued'][jobResult["jobId"]]['promise'].resolve(jobResult);
+        return;
+      }
+      if(jobResult["type"] === "B64:PNG") {
+        let [filePath, data] = jobResult["value"].split(":");
+        let fileName = path.basename(filePath);
+        console.log(`Recevied image data. Serving as ${fileName}`)
+        
+        console.log(`Saving to file ./public/${fileName}`)
+        fs.writeFileSync(`./public/${fileName}`, data, "base64", function(err) {
+          console.log(err);
+        });
+
+        jobResult["value"] = `${process.env.PUBLIC_URL}/${fileName}`;
+        jobs['queued'][jobResult["jobId"]]['promise'].resolve(jobResult);
+      }
     }
   });
   ws.on('close', function(reasonCode, description) {
@@ -105,6 +143,7 @@ wss.on('connection', function connection(ws) {
   });
 });
 
+app.use('/public', express.static('public'));
 
 app.listen(PORT_WEB, () => {
     console.log(`Job Server API running on ${PORT_WEB}`);
