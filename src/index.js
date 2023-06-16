@@ -75,27 +75,6 @@ app.post("/jobs", async (req, res) => {
   res.json({ 'jobId': jobId, "path": result["value"] });
 });
 
-app.post("/result", async (req, res) => {
-  const data = req.body;
-  jobs['queued'][jobId] = req.body;
-  jobs['queued'][jobId]['jobId'] = jobId;
-  console.log(`Queued Job ${jobId}`);
-  let nodes = Array.from(wss.clients);
-  nodeIndex = (nodeIndex + 1) % nodes.length;
-  var client = nodes[nodeIndex];
-  if(!client) {
-    res.status(503).json({ 'message': 'No render nodes available', 'jobId': jobId });
-    return;
-  }
-  client.send(JSON.stringify({"job": req.body}));
-  let response = new Promise(function (resolve, reject){
-    jobs['queued'][jobId]['promise'] = {resolve: resolve, reject: reject}; 
-  });
-  console.log(`Sent job to node ${nodeIndex+1}/${nodes.length} `, client.nodeID);
-  let result = await response.then(ResolveJob)
-  res.json({ 'jobId': jobId, "path": result["value"] });
-});
-
 wss.on('connection', function connection(ws) {
   var nodeID = uuid.v4();
   ws.nodeID = nodeID;
