@@ -58,12 +58,14 @@ app.post("/jobs", async (req, res) => {
 
   jobs['queued'][jobId] = req.body;
   jobs['queued'][jobId]['jobId'] = jobId;
-  console.log(`Queued Job ${jobId}`);
+  console.log(`Received Job ${jobId}`);
   let nodes = Array.from(wss.clients);
-  nodeIndex = (nodeIndex + 1) % nodes.length;
+  nodeIndex = nodes.length === 0 ? 0 : ++nodeIndex % nodes.length;
   var client = nodes[nodeIndex];
   if(!client) {
-    res.status(503).json({ 'message': 'No render nodes available', 'jobId': jobId, 'details': JSON.stringify(nodes) });
+    res.status(503).json({ 'message': 'No render nodes available', 'jobId': jobId });
+    delete jobs['queued'][jobId];
+    console.log(`Rejected Job ${jobId}! No render nodes available`);
     return;
   }
   client.send(JSON.stringify({"job": req.body}));
