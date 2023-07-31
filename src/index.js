@@ -87,11 +87,11 @@ wss.on('connection', function connection(ws) {
     
     if(request["register"]){
       if(request["register"]["auth_key"] !== process.env.NODE_AUTH_KEY) {
-        nodeID = `${nodeID}-${request["register"]["hostname"]}`;
         console.log("INVALID AUTH KEY. Disconnecting ", nodeID);
         ws.close(4000, "Invalid auth key");
         return;
       }
+      nodeID = `${nodeID}-${request["register"]["hostname"]}`;
       ws.send(JSON.stringify({"welcome": { "clientId": nodeID }}));
       ws.nodeID = nodeID;
       nodes[nodeID] = ws
