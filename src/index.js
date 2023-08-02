@@ -78,6 +78,7 @@ app.post("/jobs", async (req, res) => {
 });
 
 wss.on('connection', function connection(ws) {
+  ws.isAlive = true;
   var nodeID = uuid.v4();
   console.log("New connection from", nodeID)
   ws.on('error', console.error);
@@ -119,11 +120,28 @@ wss.on('connection', function connection(ws) {
       }
     }
   });
+
+  ws.on('pong', () => {
+    ws.isAlive = true;
+  });
+
   ws.on('close', function(reasonCode, description) {
     console.log(`Node ${ws.nodeID} disconnected.`);
     delete nodes[ws.nodeID]
   });
 });
+
+const timeoutConnections = setInterval(() => {
+  for (const [id, node] of Object.entries(nodes)) {
+    if (node.isAlive === false) {
+      console.log(`Node considered dead ${id}`);
+      return node.terminate();
+    }
+
+    node.isAlive = false;
+    node.ping('ping');
+  };
+}, 5000);
 
 app.use('/public', express.static('public'));
 
