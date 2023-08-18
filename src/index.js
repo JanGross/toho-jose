@@ -35,10 +35,13 @@ app.use('/example', express.static(path.join(__dirname, 'example')));
 
 app.get('/status', (req, res) => {
   let queued = Object.values(jobs['queued']);
-
+  let clients = Array.from(wss.clients);
   res.json( 
     {
-      'nodes': Array.from(wss.clients),
+      'nodes': {
+        'clients': clients,
+        'count': clients.length
+      },
       'jobs': {
         'queued': { 'count': queued.length, 'items': queued  },
       } 
